@@ -19,8 +19,8 @@
  */
 
 // Disallow direct access to this file for security reasons
-if (!defined("IN_MYBB")) {
-    die("Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.");
+if (!defined('IN_MYBB')) {
+    die('Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.');
 }
 
 /* --- Plugin API: --- */
@@ -28,14 +28,14 @@ if (!defined("IN_MYBB")) {
 function htmlpurifier_info()
 {
     return array(
-        "name" => "HTMLPurifier for MyBB",
-        "description" => "Remove malicious code from HTML in posts. Depends on <a href=\"http://htmlpurifier.org/\"><img src=\"http://htmlpurifier.org/live/art/powered.png\" alt=\"Powered by HTML Purifier\" border=\"0\" /> library</a>.",
-        "website" => "https://github.com/frostschutz/HTMLPurifier-MyBB",
-        "author" => "Andreas Klauer",
-        "authorsite" => "mailto:Andreas.Klauer@metamorpher.de",
-        "version" => "1.0",
-        "guid" => "b27ff3ca01fe7fa37927416e86d48fae",
-        "compatibility" => "16*"
+        'name' => 'HTMLPurifier for MyBB',
+        'description' => "Remove malicious code from HTML in posts. Depends on <a href=\"http://htmlpurifier.org/\"><img src=\"http://htmlpurifier.org/live/art/powered.png\" alt=\"Powered by HTML Purifier\" border=\"0\" /> library</a>.",
+        'website' => 'https://github.com/frostschutz/HTMLPurifier-MyBB',
+        'author' => 'Andreas Klauer',
+        'authorsite' => 'mailto:Andreas.Klauer@metamorpher.de',
+        'version' => '1.0',
+        'guid' => 'b27ff3ca01fe7fa37927416e86d48fae',
+        'compatibility' => '16*'
     );
 }
 
