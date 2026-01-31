@@ -1,0 +1,26 @@
+name: Build and Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Composer dependencies in subfolder
+        run: |
+          cd inc/plugins/htmlpurifier
+          composer install --no-dev --prefer-dist --no-progress --no-suggest --optimize-autoloader
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: package
+          include-hidden-files: true
+          path: |
+            .
+            !.*
+            .source-commit
