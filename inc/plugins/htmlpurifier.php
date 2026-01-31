@@ -25,7 +25,7 @@ if (!defined('IN_MYBB')) {
 
 /* --- Plugin API: --- */
 
-function htmlpurifier_info()
+function htmlpurifier_info(): array
 {
     return array(
         'name' => 'HTMLPurifier for MyBB',
@@ -35,17 +35,21 @@ function htmlpurifier_info()
         'authorsite' => 'mailto:Andreas.Klauer@metamorpher.de',
         'version' => '1.0',
         'guid' => 'b27ff3ca01fe7fa37927416e86d48fae',
-        'compatibility' => '16*'
+        'compatibility' => '18*,19*'
     );
 }
 
-function htmlpurifier_activate()
+function htmlpurifier_activate(): void
 {
-    @mkdir(MYBB_ROOT . 'cache/htmlpurifier');
+    if (!is_dir(MYBB_ROOT . 'cache/htmlpurifier')) {
+        mkdir(MYBB_ROOT . 'cache/htmlpurifier');
+    }
 
-    if (!@file_exists(MYBB_ROOT . 'inc/plugins/htmlpurifier/HTMLPurifier.php')
-        || !@file_exists(MYBB_ROOT . 'inc/plugins/htmlpurifier/HTMLPurifier.auto.php')
-        || !@file_exists(MYBB_ROOT . 'inc/plugins/htmlpurifier/HTMLPurifier.func.php')) {
+    if (file_exists(MYBB_ROOT . 'inc/plugins/htmlpurifier/vendor/autoload.php')) {
+        require_once MYBB_ROOT . 'inc/plugins/htmlpurifier/vendor/autoload.php';
+    }
+
+    if (!class_exists('HTMLPurifier')) {
         flash_message(
             'The <a href="http://htmlpurifier.org/"><img src="http://htmlpurifier.org/live/art/powered.png" alt="Powered by HTML Purifier" border="0" /> library</a> is missing. Please download it and upload the contents of the <em>library/</em> folder to <em>inc/plugins/htmlpurifier/</em>',
             'error'
@@ -53,7 +57,7 @@ function htmlpurifier_activate()
         admin_redirect('index.php?module=config-plugins');
     }
 
-    if (!@is_writable(MYBB_ROOT . 'cache/htmlpurifier/')) {
+    if (!is_writable(MYBB_ROOT . 'cache/htmlpurifier/')) {
         flash_message('Please create a directory <em>cache/htmlpurifier</em> and make it writable.', 'error');
         admin_redirect('index.php?module=config-plugins');
     }
@@ -66,11 +70,11 @@ global $plugins, $settings;
 $plugins->add_hook('datahandler_post_validate_thread', 'htmlpurifier_post');
 $plugins->add_hook('datahandler_post_validate_post', 'htmlpurifier_post');
 
-if ($settings['pmsallowhtml']) {
+if (!empty($settings['pmsallowhtml'])) {
     $plugins->add_hook('datahandler_pm_validate', 'htmlpurifier_pm');
 }
 
-if ($settings['sightml']) {
+if (!empty($settings['sightml'])) {
     $plugins->add_hook('usercp_do_editsig_start', 'htmlpurifier_sig_ucp');
 }
 
@@ -79,16 +83,14 @@ if ($settings['sightml']) {
 /**
  * Filter HTML when posting.
  */
-function htmlpurifier_post($handler)
+function htmlpurifier_post(PostDataHandler $handler): void
 {
-    $fid = $handler->data['fid'];
+    $forum = get_forum($handler->data['fid']);
 
-    $forum = get_forum($fid);
-
-    if ($forum['allowhtml']) {
+    if (!empty($forum['allowhtml']) && !empty($handler->data['message'])) {
         $handler->data['message'] = htmlpurifier_do(
             $handler->data['message'],
-            $forum['allowmycode']
+            !empty($forum['allowmycode'])
         );
     }
 }
@@ -96,45 +98,47 @@ function htmlpurifier_post($handler)
 /**
  * Filter HTML in PM
  */
-function htmlpurifier_pm($handler)
+function htmlpurifier_pm(PMDataHandler $handler): void
 {
-    global $settings;
+    if (!empty($handler->data['message'])) {
+        global $settings;
 
-    $handler->data['message'] = htmlpurifier_do(
-        $handler->data['message'],
-        $settings['pmsallowmycode']
-    );
+        $handler->data['message'] = htmlpurifier_do(
+            $handler->data['message'],
+            !empty($settings['pmsallowmycode'])
+        );
+    }
 }
 
 /**
  * Filter HTML in Signature
  */
-function htmlpurifier_sig_ucp()
+function htmlpurifier_sig_ucp(): void
 {
-    global $mybb, $settings;
+    global $mybb;
 
-    $mybb->input['signature'] = htmlpurifier_do(
-        $mybb->input['signature'],
-        $settings['sigmycode']
-    );
+    if (!empty($mybb->input['signature'])) {
+        $mybb->input['signature'] = htmlpurifier_do(
+            $mybb->input['signature'],
+            !empty($mybb->settings['sigmycode'])
+        );
+    }
 }
 
 /**
  * Purify HTML.
  */
-function htmlpurifier_do($html, $mycode = false)
+function htmlpurifier_do(string $html, bool $allow_mycode = false): string
 {
-    require_once MYBB_ROOT . 'inc/plugins/htmlpurifier/HTMLPurifier.auto.php';
-    require_once MYBB_ROOT . 'inc/plugins/htmlpurifier/HTMLPurifier.func.php';
+    require_once MYBB_ROOT . 'inc/plugins/htmlpurifier/vendor/autoload.php';
 
     // Special treatment for code tags.
-    if ($mycode) {
+    if ($allow_mycode) {
         $html = preg_replace_callback(
             "#\[(code|php)\](.*?)\[/\\1\]#si",
-            create_function(
-                '$matches',
-                'return htmlspecialchars($matches[0]);'
-            ),
+            function (array $matches): string {
+                return htmlspecialchars($matches[0]);
+            },
             $html
         );
     }
@@ -145,13 +149,12 @@ function htmlpurifier_do($html, $mycode = false)
     $html = $purifier->purify($html);
 
     // Revert special treatment for code tags.
-    if ($mycode) {
+    if ($allow_mycode) {
         $html = preg_replace_callback(
             "#\[(code|php)\](.*?)\[/\\1\]#si",
-            create_function(
-                '$matches',
-                'return htmlspecialchars_decode($matches[0]);'
-            ),
+            function (array $matches): string {
+                return htmlspecialchars_decode($matches[0]);
+            },
             $html
         );
     }
